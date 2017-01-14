@@ -23,12 +23,32 @@ uint32_t frameNum;
 uint32_t framePlayback;
 ofVec2f rightHandAt;
 ofVec2f leftHandAt;
+ofVec2f leftPointerAt;
+ofVec2f rightPointerAt;
 ofImage leftHandImage;
 ofImage rightHandImage;
+ofImage backImage;
+ofImage leftHandImage_ld;
+ofImage rightHandImage_ld;
+ofImage backImage_ld;
 bool rightHandFound;
 bool leftHandFound;
 bool leftHandImageFrag;
 bool rightHandImageFrag;
+bool backImageFrag;
+bool leftPointerFound;
+bool rightPointerFound;
+
+bool isrightAssign2Tip;
+bool isleftAssign2Tip;
+
+bool isColorPointsEnable;
+
+int rightHandImageSize;
+int leftHandImageSize;
+int backImageSize;
+ofVec2f backImageAt;
+int bkx, bky;
 
 bool captureWindowFlag;
 bool startMenuFlag;
@@ -52,6 +72,8 @@ void ofApp::setup(){
 	ofBackground(180);
 	ofSetWindowShape(1980, 1080);
 	ofSetFrameRate(FPS);
+	ImGuiIO& io = ImGui::GetIO();
+	io.Fonts->AddFontFromFileTTF("data\\YuGothM001.TTF", 24.0f, nullptr,nullptr);
 
 	gui.setup();
 
@@ -96,6 +118,14 @@ void ofApp::initializeCapture() {
 	senseManager->EnableStream(PXCCapture::StreamType::STREAM_TYPE_DEPTH, DEPTH_WIDTH,DEPTH_HEIGHT, 30);
 
 	senseManager->Init();
+
+	handModule = senseManager->QueryHand();
+	handData = handModule->CreateOutput();
+
+	config = handModule->CreateActiveConfiguration();
+	config->EnableSegmentationImage(true);
+	config->ApplyChanges();
+	config->Update();
 
 }
 
@@ -170,32 +200,46 @@ void ofApp::updateCamera() { //Live‚É•K—v‚È‚à‚Ì‚Ì‚ÝB‘¼‚É•K—v‚È‚à‚Ì‚Í‚Ù‚©‚Å‚â‚ë‚
 			//printf("%s", sampleData.planes[0]);
 			sampleImage->ReleaseAccess(&sampleData);
 		}
-		if (VC_State != RECORD) {
+		//if (VC_State != RECORD) {
 			//hand
 			handData->Update();
 			pxcUID handId;
 			PXCHandData::IHand* hand;
+			PXCHandData::JointData jointData;
 			//left hand at first
 			if (handData->QueryHandId(PXCHandData::ACCESS_ORDER_LEFT_HANDS, 0, handId) == PXC_STATUS_NO_ERROR) {
 				handData->QueryHandDataById(handId, hand);
 				auto center_l = hand->QueryMassCenterImage();
 				leftHandAt.set(center_l.x, center_l.y);
 				leftHandFound = true;
+				hand->QueryTrackedJoint((PXCHandData::JointType)9, jointData);
+				leftPointerFound = true;
+				leftPointerAt.set(jointData.positionImage.x, jointData.positionImage.y);
 			}
-			else { leftHandFound = false; }
+			else { leftHandFound = false; 
+			leftPointerFound = false;
+			}
 
 			if (handData->QueryHandId(PXCHandData::ACCESS_ORDER_RIGHT_HANDS, 0, handId) == PXC_STATUS_NO_ERROR) {
 				handData->QueryHandDataById(handId, hand);
 				auto center_r = hand->QueryMassCenterImage();
 				rightHandAt.set(center_r.x, center_r.y);
 				rightHandFound = true;
+				rightPointerFound = true;
+				hand->QueryTrackedJoint((PXCHandData::JointType)9, jointData);
+				rightPointerAt.set(jointData.positionImage.x, jointData.positionImage.y);
 			}
-			else { rightHandFound = false; }
+			else { rightHandFound = false; 
+			rightPointerFound = false;
+			}
 
-		}
+		//}
 		senseManager->ReleaseFrame();
 	}
-	else { printf("Aquireframe error\n"); }
+	else { printf("Aquireframe error\n"); 
+	Pause = true;
+	senseManager->QueryCaptureManager()->SetPause(Pause);
+	}
 	texture.loadData(imagePixels.getPixels(), 640, 480, GL_BGRA);
 }
 
@@ -209,9 +253,10 @@ void ofApp::draw(){
 
 	case ENTRY:
 		drawPoints();
-		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ofVec2f(1400, 400), ImGuiSetCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_Always);
+		ImGui::SetNextWindowPos(ofVec2f(1380, 50), ImGuiSetCond_Always);
 		ImGui::Begin("Start Menu", &startMenuFlag);
+	
 
 		//todo V‹KƒvƒƒWƒFƒNƒg¶¬Žž‚Æƒ[ƒhŽž‚ÅAƒtƒHƒ‹ƒ_–¼‚ðŽw’è‚·‚é‚Ì‚Æƒtƒ@ƒCƒ‹‚ðŽw’è‚·‚é‚Ì‚Åˆµ‚¢‚ªˆÙ‚È‚Á‚Ä‚µ‚Ü‚¤B
 		if (ImGui::Button("Create New Project"))
@@ -266,14 +311,12 @@ void ofApp::draw(){
 		break;
 
 	case RECORD:
-		drawPoints();
-		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ofVec2f(1400, 400), ImGuiSetCond_FirstUseEver);
+		if (Pause == false) frameNum++;
+
+		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_Always);
+		ImGui::SetNextWindowPos(ofVec2f(1380, 50), ImGuiSetCond_Always);
 		ImGui::Begin("Record Manager", &startMenuFlag);
 		
-		if(Pause==false) frameNum++;
-
-		//todo V‹KƒvƒƒWƒFƒNƒg¶¬Žž‚Æƒ[ƒhŽž‚ÅAƒtƒHƒ‹ƒ_–¼‚ðŽw’è‚·‚é‚Ì‚Æƒtƒ@ƒCƒ‹‚ðŽw’è‚·‚é‚Ì‚Åˆµ‚¢‚ªˆÙ‚È‚Á‚Ä‚µ‚Ü‚¤B
 		if (ImGui::Button("Start Recording"))
 		{
 			Pause = false;
@@ -291,52 +334,170 @@ void ofApp::draw(){
 		}
 		ImGui::Text("Recording Frame Count : %d", frameNum);
 		ImGui::Text("Recording Time Duration : %d", frameNum / 30);
-
+		ImGui::Checkbox("PointsEnable", &isColorPointsEnable);
+		if (isColorPointsEnable) {
+			drawPoints();
+		}
 		ImGui::End();
+		drawPicCtrl();
+		drawImages();
 		break;
 
 	case EDIT:
 		//drawPoints();
-		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_FirstUseEver);
-		ImGui::SetNextWindowPos(ofVec2f(1400, 400), ImGuiSetCond_FirstUseEver);
-		ImGui::Begin("Project Control", &startMenuFlag);
-
 		if (Pause == false) frameNum++;
 
-		//todo V‹KƒvƒƒWƒFƒNƒg¶¬Žž‚Æƒ[ƒhŽž‚ÅAƒtƒHƒ‹ƒ_–¼‚ðŽw’è‚·‚é‚Ì‚Æƒtƒ@ƒCƒ‹‚ðŽw’è‚·‚é‚Ì‚Åˆµ‚¢‚ªˆÙ‚È‚Á‚Ä‚µ‚Ü‚¤B
-		if (ImGui::Button("Assign Left Hand"))
+		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_Always);
+		ImGui::SetNextWindowPos(ofVec2f(1380, 50), ImGuiSetCond_Always);
+		ImGui::Begin("Playback Manager", &startMenuFlag);
+	
+		if (ImGui::Button("Start"))
 		{
-			result = ofSystemLoadDialog("Load Lefthand Image");
-			if (result.bSuccess) {
-				path = result.getPath();
-				leftHandImage.loadImage(path);
-				leftHandImage.resize(leftHandImage.getWidth() / 2, leftHandImage.getHeight() / 2);
-				leftHandImageFrag = true;
-			}
+			Pause = false;
+			senseManager->QueryCaptureManager()->SetPause(Pause);
 		}
-		if (ImGui::Button("Assign Right Hand"))
+		ImGui::SameLine();
+		if (ImGui::Button("Pause"))
 		{
-			result = ofSystemLoadDialog("Load Righthand Image");
-			if (result.bSuccess) {
-				path = result.getPath();
-				rightHandImage.loadImage(path);
-				rightHandImage.resize(rightHandImage.getWidth() / 2, rightHandImage.getHeight() / 2);
-				rightHandImageFrag = true;
-			}
+			Pause = true;
+			senseManager->QueryCaptureManager()->SetPause(Pause);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Stop"))
+		{	
+			framePlayback = 0;
+			Pause = true;
+			senseManager->QueryCaptureManager()->SetPause(Pause);
+		}
+		ImGui::SameLine();
+
+		if (ImGui::Button("Save Project"))
+		{
+			std::string pjdir;
+			pjdir.copy();
+			//leftHandImage_ld.saveImage()
 		}
 
+		if (ImGui::Button("-3s"))
+		{
+			framePlayback -= 90;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("-1s"))
+		{
+			framePlayback -= 30;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("+1s"))
+		{
+			framePlayback += 30;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("+3s"))
+		{
+			framePlayback += 90;
+		}
+
+		ImGui::Text("Playback Frame Count : %d", framePlayback);
+		ImGui::Text("Playback Time Duration : %d", framePlayback / 30);
+		ImGui::Checkbox("PointsEnable", &isColorPointsEnable);
+		if (isColorPointsEnable) {
+			drawPoints();
+		}
 		ImGui::End();
-		if (leftHandFound && leftHandImageFrag) {
-			leftHandImage.draw(leftHandAt.x*2 + 40 - leftHandImage.getWidth() / 2, leftHandAt.y*2 + 60 - leftHandImage.getHeight() / 2);
-		}
-		if (rightHandFound && rightHandImageFrag) {
-			rightHandImage.draw(rightHandAt.x*2 + 60 - rightHandImage.getWidth() / 2, rightHandAt.y*2 + 60 - rightHandImage.getHeight() / 2);
-
-		}
+		drawPicCtrl();
+		drawImages();
 		break;
 
 	}
 	gui.end();
+}
+
+void ofApp::drawPicCtrl() {
+
+	ImGui::SetNextWindowSize(ofVec2f(500, 110), ImGuiSetCond_Always);
+	ImGui::SetNextWindowPos(ofVec2f(1380, 280), ImGuiSetCond_Always);
+	ImGui::Begin("Left Hand Control", &startMenuFlag);
+
+	if (ImGui::Button("Assign Picture"))
+	{
+		result = ofSystemLoadDialog("Load Lefthand Image");
+		if (result.bSuccess) {
+			path = result.getPath();
+			leftHandImage_ld.loadImage(path);
+			//leftHandImage.resize(leftHandImage.getWidth() / 2, leftHandImage.getHeight() / 2);
+			leftHandImageFrag = true;
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Checkbox("Enable", &leftHandImageFrag);
+	ImGui::SameLine();
+	ImGui::Checkbox("at Tip", &isleftAssign2Tip);
+	ImGui::SliderInt("Size", &leftHandImageSize, 100, 600,nullptr);
+	ImGui::End();
+	ImGui::SetNextWindowSize(ofVec2f(500, 110), ImGuiSetCond_Always);
+	ImGui::SetNextWindowPos(ofVec2f(1380, 420), ImGuiSetCond_Always);
+	ImGui::Begin("Right Hand Control", &startMenuFlag);
+
+	if (ImGui::Button("Assign Picture"))
+	{
+		result = ofSystemLoadDialog("Load Righthand Image");
+		if (result.bSuccess) {
+			path = result.getPath();
+			rightHandImage_ld.loadImage(path);
+			//rightHandImage.resize(rightHandImage.getWidth() / 2, rightHandImage.getHeight() / 2);
+			rightHandImageFrag = true;
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Checkbox("Enable", &rightHandImageFrag);
+	ImGui::SameLine();
+	ImGui::Checkbox("at Tip", &isrightAssign2Tip);
+	ImGui::SliderInt("Size", &rightHandImageSize, 100, 600,nullptr);
+	ImGui::End();
+	/*
+	ImGui::SetNextWindowSize(ofVec2f(500, 160), ImGuiSetCond_Always);
+	ImGui::SetNextWindowPos(ofVec2f(1380, 560), ImGuiSetCond_Always);
+	ImGui::Begin("Head Control", &startMenuFlag);
+
+	if (ImGui::Button("Assign Picture"))
+	{
+		result = ofSystemLoadDialog("Load Head Image");
+		if (result.bSuccess) {
+			path = result.getPath();
+			headImage_ld.loadImage(path);
+			//rightHandImage.resize(rightHandImage.getWidth() / 2, rightHandImage.getHeight() / 2);
+			headImageFrag = true;
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Checkbox("Enable", &headImageFrag);
+	ImGui::SameLine();
+	//ImGui::Checkbox("at Tip", &isrightAssign2Tip);
+	ImGui::SliderInt("Size", &rightHandImageSize, 100, 600, nullptr);
+	ImGui::End();
+*/
+	ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_Always);
+	ImGui::SetNextWindowPos(ofVec2f(1380, 740), ImGuiSetCond_Always);
+	ImGui::Begin("Background Control", &startMenuFlag);
+
+	if (ImGui::Button("Assign Picture"))
+	{
+		result = ofSystemLoadDialog("Load BackGround Image");
+		if (result.bSuccess) {
+			path = result.getPath();
+			backImage_ld.loadImage(path);
+			//backImage.resize(backImage.getWidth() / 2, backImage.getHeight() / 2);
+			backImageFrag = true;
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Checkbox("Enable", &backImageFrag);
+	ImGui::SliderInt("Size", &backImageSize, 100, 500,nullptr);
+	ImGui::SliderInt("X offset", &bkx, 0, 640, nullptr);
+	ImGui::SliderInt("Y offset", &bky, 0, 480, nullptr);
+	backImageAt.set(bkx, bky);
+	ImGui::End();
 }
 
 void ofApp::drawPoints() {
@@ -344,14 +505,49 @@ void ofApp::drawPoints() {
 	if (leftHandFound) {
 		ofSetColor(255, 0, 0);
 		ofFill();
-		ofRect(leftHandAt.x * 2 + camViewport.x + capCalibrateX, leftHandAt.y * 2 + camViewport.y, 30, 30);
+		ofRect(leftHandAt.x * 2 + camViewport.x , leftHandAt.y * 2 + camViewport.y, 30, 30);
+		ofSetColor(255, 100, 100);
+		ofFill();
+		ofRect(leftPointerAt.x * 2 + camViewport.x , leftPointerAt.y * 2 + camViewport.y, 10 ,10);
 	}
 	if (rightHandFound) {
 		ofSetColor(0, 0, 255);
 		ofFill();
-		ofRect(rightHandAt.x * 2 + camViewport.x + capCalibrateX, rightHandAt.y * 2 + camViewport.y, 30, 30);
+		ofRect(rightHandAt.x * 2 + camViewport.x , rightHandAt.y * 2 + camViewport.y, 30, 30);
+		ofSetColor(100, 100, 255);
+		ofFill();
+		ofRect(rightPointerAt.x * 2 + camViewport.x , rightPointerAt.y * 2 + camViewport.y, 10, 10);
 	}
 	ofPopStyle();
+}
+
+void ofApp::drawImages() {
+
+	if (leftHandFound && leftHandImageFrag) {
+		leftHandImage.clone(leftHandImage_ld);
+		leftHandImage.resize(leftHandImageSize, leftHandImage_ld.getHeight()*leftHandImageSize / leftHandImage_ld.getWidth());
+		if (isleftAssign2Tip) {
+			leftHandImage.draw(leftPointerAt.x * 2 + 40 - leftHandImage.getWidth() / 2, leftPointerAt.y * 2 + 60 - leftHandImage.getHeight() / 2);
+		}
+		else {
+			leftHandImage.draw(leftHandAt.x * 2 + 40 - leftHandImage.getWidth() / 2, leftHandAt.y * 2 + 60 - leftHandImage.getHeight() / 2);
+		}
+		}
+	if (rightHandFound && rightHandImageFrag) {
+		rightHandImage.clone(rightHandImage_ld);
+		rightHandImage.resize(rightHandImageSize, rightHandImage_ld.getHeight()*rightHandImageSize / rightHandImage_ld.getWidth());
+		if (isrightAssign2Tip) {
+			rightHandImage.draw(rightPointerAt.x * 2 + 60 - rightHandImage.getWidth() / 2, rightPointerAt.y * 2 + 60 - rightHandImage.getHeight() / 2);
+		}
+		else {
+			rightHandImage.draw(rightHandAt.x * 2 + 60 - rightHandImage.getWidth() / 2, rightHandAt.y * 2 + 60 - rightHandImage.getHeight() / 2);
+		}
+	}
+	if (backImageFrag) {
+		backImage.clone(backImage_ld);
+		backImage.resize(backImageSize, backImage_ld.getHeight()*backImageSize / backImage_ld.getWidth());
+		backImage.draw(backImageAt.x * 2 + 60 - backImage.getWidth() / 2, backImageAt.y * 2 + 60 - backImage.getHeight() / 2);
+	}
 }
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){

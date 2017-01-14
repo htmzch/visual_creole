@@ -102,6 +102,8 @@ class ofApp : public ofBaseApp{
 		void updateCamera();
 
 		void drawPoints();
+		void drawImages();
+		void drawPicCtrl();
 
 		ofxImGui::Gui gui;
 };
