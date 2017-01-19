@@ -5,6 +5,11 @@
 #include <wchar.h>
 #include <direct.h>
 
+#include<string>
+#include<iostream> 
+#include<fstream> 
+#include<sstream>
+
 #include "pxccapture.h"
 #include "pxcsensemanager.h"
 #include "pxccapturemanager.h"
@@ -13,6 +18,9 @@
 #include "pxchandconfiguration.h"
 #include "pxchanddata.h"
 #include "pxchandmodule.h"
+#include "pxcfacemodule.h"
+#include "pxcfaceconfiguration.h"
+#include "pxcprojection.h"
 
 #include "ofxImGui.h"
 
@@ -39,9 +47,7 @@ class ofApp : public ofBaseApp{
 		//Visual Creole全体のState。起動直後のプロジェクト選択、録画、編集の３つ
 		enum _VC_State {
 			ENTRY, //起動直後はこれ。
-			ENTRY2RECORD,
 			RECORD,
-			ENTRY2EDIT,
 			EDIT
 		} ;
 
@@ -54,7 +60,7 @@ class ofApp : public ofBaseApp{
 			RECORDING,
 			RECORDED //録画終了時。たぶんすぐ編集画面に遷移する
 		} ;
-
+		
 		//再生画面でのステート。この時編集、ビューステートも同時に遷移する。
 		enum P_State {
 			STOP,//停止中。
@@ -98,6 +104,7 @@ class ofApp : public ofBaseApp{
 		void initializeLive();
 		void initializeCapture();
 		void initializePlayer();
+		void initializeLoadedValue();
 
 		void updateCamera();
 
