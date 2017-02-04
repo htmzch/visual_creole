@@ -385,10 +385,10 @@ void ofApp::updateCamera() { //Liveに必要なもののみ。他に必要なも
 	else {
 		printf("Aquireframe error\n");
 		Pause = true;
-		writeOut = false;
+		//writeOut = false;
 		framePlayback--;
 		senseManager->QueryCaptureManager()->SetPause(Pause);
-		ofSetFrameRate(15);
+		//ofSetFrameRate(15);
 	}
 	texture.loadData(imagePixels.getPixels(), 640, 480, GL_BGRA);
 }
@@ -664,6 +664,10 @@ void ofApp::draw() {
 		mainlayer.readToPixels(wpixels);
 		wimage.setFromPixels(wpixels);
 		wimage.saveImage(recdir + "\\" + IntToString(framePlayback) + ".bmp");
+		if (Pause) {
+			writeOut = false;
+			ofSetFrameRate(15);
+		}
 	}
 }
 
