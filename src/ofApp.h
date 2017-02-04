@@ -56,36 +56,74 @@ class ofApp : public ofBaseApp{
 		//録画画面でのステート
 		enum R_State {
 			WAITING, //
-			READY,
-			RECORDING,
-			RECORDED //録画終了時。たぶんすぐ編集画面に遷移する
+			READY,	//
+			RECORDING,//録画中、この時には画像の描画をしないでいるとよい？
+			RECORDED //録画終了時。すぐ編集画面に遷移する
 		} ;
-		
-		//再生画面でのステート。この時編集、ビューステートも同時に遷移する。
-		enum P_State {
-			STOP,//停止中。
-			PLAYING, //再生中。
-			PREVIEW //作ったパーツに対するプレビュー中、v0.1ではパーツの前後1秒の計3秒
-		} ;
+		/*
 
-		//編集画面でのステート、編集中≒お絵かき中
-		enum E_State {
-			EDITING_NONE, //なにも編集してない。開始時や編集領域のOK押下後など。
-			EDITING_LEFT, //左手編集中
-			EDITING_RIGHT, //右手編集中
-			EDITING_BACK, //背景編集中
-		} ;
+		/*
+		points 
+		体のパーツそれぞれの情報（左手のひら、右手人差し指先、etc）
+		dP[n]として宣言。
+		便宜上背景の分も変数を確保しておく（enableは常にtrue）
+		呼び方は dP[lEye].pos.x など（左目のx座標を取得）
+		取得点を増やすときは、#defineで対応する呼称を定義すること。
+		*/
 
-		//Assetsのビュー状態（画面右、中段のPNGの保管庫の状態を示す。
-		enum V_State {
-			VIEW_ALL,
-			VIEW_LEFT, //
-			VIEW_RIGHT,
-			VIEW_BACK
-		} ;
+		typedef struct _point {
+			bool en;//手とかが検知されて、値を更新可能であったときにtrue
+			char* name;
+			ofVec2f pos;
+		} point;
+	
+#define dPsize 8
 
-		typedef struct _part {
-			int startframe; //描画が開始されるフレーム番号
+		point dP[dPsize];
+
+	#define lHandPalm	0
+	#define lHandTip	1
+	#define rHandPalm	2
+	#define rHandTip	3
+	#define lEye		4
+	#define rEye		5
+	#define mouse		6
+	#define bg			7
+
+		typedef struct _lenderunit {
+			bool en;
+			int to;
+
+			
+			ofFbo layer; //ドローイング内容を保存しておく。変更発生時のみ、このレイヤを画像化する。
+
+			ofImage image; //layerを画像化したもの、これを各ドローポイント（指先etc）に追従させ表示する。
+			ofImage fileimg; //外部から読み込んだ画像ファイル
+
+			ofVec2f offset;
+			int size; //%基準。layerおよびfileimgの
+			int size_pre; //サイズ変更を検知するため、1フレ前の大きさも入れておきます
+
+			//for future work
+			int in, out; //描画有効、無効となるフレーム
+		} lenderunit;
+
+#define lunitsize 4
+
+		lenderunit lunit[lunitsize]; //ひとまず左右の手、顔、背景に使えるように4つ確保
+
+
+		//lenderunit head, lefthand, righthand, back;
+
+		ofFbo mainlayer; //最終的にこのレイヤにすべてのlenderunit.imageをまとめて書き込む。
+
+		/*typedef struct _part {
+			//int startframe; //描画が開始されるフレーム番号
+			ofImage loadedImage;
+			ofFbo layer; //外部から読み込んだ画像、内部で描いた画像の両方を収容する。
+			
+			
+			int startframe;
 			int endframe; //描画が停止されるフレーム番号、v0.1では開始30フレーム（1秒)後
 			int offset_x; //画像のpx単位のオフセット、自分で描いた場合はあまり適用しないかも、外部のpngを読んだときに利用する。
 			int offset_y;
@@ -93,17 +131,20 @@ class ofApp : public ofBaseApp{
 			//とりあえず%処理だけで動けるかどうかやってみる。というかv0.1では未実装になるかも。
 			//int size_x; //読み込んだ画像のもともとの
 			//int size_y;
-			ofPixels picture;
+			//ofPixels picture;
 		} part ;
-
+		*/
 		//動的配列vectorによる宣言
+		/*
 		std::vector<part> partsLeft;
 		std::vector<part> partsRight;
 		std::vector<part> partsBack;
+		*/
 
-		void initializeLive();
-		void initializeCapture();
-		void initializePlayer();
+		void initializeRSSDK();
+		//void initializeLive();
+		//void initializeCapture();
+		//void initializePlayer();
 		void initializeLoadedValue();
 
 		void updateCamera();
