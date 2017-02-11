@@ -73,8 +73,8 @@ class ofApp : public ofBaseApp{
 
 		typedef struct _point {
 			bool en;//手とかが検知されて、値を更新可能であったときにtrue
-			char* name;
-			ofVec2f pos;
+			char* name;//名前を入れる。ofapp.cppのsetupで行っているはず
+			ofVec2f pos;//座標
 		} point;
 	
 #define dPsize 8
@@ -93,17 +93,12 @@ class ofApp : public ofBaseApp{
 		typedef struct _lenderunit {
 			bool en;
 			int to;
-
-			
 			ofFbo layer; //ドローイング内容を保存しておく。変更発生時のみ、このレイヤを画像化する。
-
 			ofImage image; //layerを画像化したもの、これを各ドローポイント（指先etc）に追従させ表示する。
 			ofImage fileimg; //外部から読み込んだ画像ファイル
-
 			ofVec2f offset;
 			int size; //%基準。layerおよびfileimgの
 			int size_pre; //サイズ変更を検知するため、1フレ前の大きさも入れておきます
-
 			//for future work
 			int in, out; //描画有効、無効となるフレーム
 		} lenderunit;
@@ -112,39 +107,9 @@ class ofApp : public ofBaseApp{
 
 		lenderunit lunit[lunitsize]; //ひとまず左右の手、顔、背景に使えるように4つ確保
 
-
-		//lenderunit head, lefthand, righthand, back;
-
 		ofFbo mainlayer; //最終的にこのレイヤにすべてのlenderunit.imageをまとめて書き込む。
 
-		/*typedef struct _part {
-			//int startframe; //描画が開始されるフレーム番号
-			ofImage loadedImage;
-			ofFbo layer; //外部から読み込んだ画像、内部で描いた画像の両方を収容する。
-			
-			
-			int startframe;
-			int endframe; //描画が停止されるフレーム番号、v0.1では開始30フレーム（1秒)後
-			int offset_x; //画像のpx単位のオフセット、自分で描いた場合はあまり適用しないかも、外部のpngを読んだときに利用する。
-			int offset_y;
-			int size_percent; //画像の大きさを％表示。外部から読み込んだpngが大きかったり小さかったときに。
-			//とりあえず%処理だけで動けるかどうかやってみる。というかv0.1では未実装になるかも。
-			//int size_x; //読み込んだ画像のもともとの
-			//int size_y;
-			//ofPixels picture;
-		} part ;
-		*/
-		//動的配列vectorによる宣言
-		/*
-		std::vector<part> partsLeft;
-		std::vector<part> partsRight;
-		std::vector<part> partsBack;
-		*/
-
 		void initializeRSSDK();
-		//void initializeLive();
-		//void initializeCapture();
-		//void initializePlayer();
 		void initializeLoadedValue();
 
 		void updateCamera();

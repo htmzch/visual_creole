@@ -15,7 +15,7 @@ const int COLOR_HEIGHT = 480;
 const int DEPTH_WIDTH = 640;
 const int DEPTH_HEIGHT = 480;
 const int FPS = 15;
-const int capCalibrateX = 50;
+
 
 ofRectangle camViewport;
 ofPixels imagePixels;
@@ -25,6 +25,14 @@ int running;
 
 uint32_t frameNum;
 uint32_t framePlayback;
+
+bool isColorPointsEnable;
+
+/*
+//ここに記載されているような手指の座標系は、すべてべつ構造体にまとめられています。
+
+//const int capCalibrateX = 50;
+
 ofVec2f rightHandAt;
 ofVec2f leftHandAt;
 ofVec2f leftPointerAt;
@@ -43,8 +51,6 @@ int isrightAssign2Tip;
 int isleftAssign2Tip;
 int flocation = 0;
 
-bool isColorPointsEnable;
-
 int rightHandImageSize;
 int leftHandImageSize;
 int backImageSize;
@@ -52,18 +58,18 @@ int headImageSize;
 ofVec2f backImageAt;
 int backImageOffsetX, backImageOffsetY, rightHandImageOffsetX, rightHandImageOffsetY,
 leftHandImageOffsetX, leftHandImageOffsetY, faceImageOffsetX, faceImageOffsetY;
-//TODO ここらへんの画像系変数をクラスにまとめ、left,right,back,faceの4いんすたんすで管理出来るようにする。
+*/
 
 
+/*
 bool windowcloserflag;
-
 bool captureWindowFlag;
 bool startMenuFlag;
 bool projectControlFlag; //EDIT 1
 bool playbackControlFlag; //EDIT 2
 bool assetViewFlag; //EDIT 3
 bool assetEditFlag; //EDIT 4
-
+*/
 
 ofFileDialogResult result;
 
@@ -132,15 +138,12 @@ void ofApp::setup() {
 		lunit[i].offset.y = 0;
 	}
 
-
 	camViewport.set(60, 60, 1280, 960);
 
 	writeOut = false;
 	mainlayer.allocate(1280, 960, GL_RGBA);
-	//windowcloserflag = false;
 	VC_State = ENTRY;
 	isColorPointsEnable = true;
-	//startMenuFlag = true;
 	initializeRSSDK();
 }
 
@@ -177,7 +180,7 @@ void ofApp::initializeRSSDK() {
 
 	auto device = senseManager->QueryCaptureManager()->QueryDevice();
 
-	projection = device->CreateProjection();
+	if(device != nullptr) projection = device->CreateProjection();
 
 	config = handModule->CreateActiveConfiguration();
 	config->EnableSegmentationImage(true);
@@ -221,12 +224,10 @@ void ofApp::initializeLoadedValue() {
 			getline(stream, token, ','); lunit[j].size = stoi(token);
 			getline(stream, token, ','); lunit[j].offset.x = stof(token);
 			getline(stream, token, ','); lunit[j].offset.y = stof(token);
-			//if (lunit[j].en) {
 				lunit[j].fileimg.loadImage(dir + IntToString(j) + ".png");
 				if (lunit[j].fileimg.isAllocated()) {
 					lunit[j].en = true;
 				}
-			//}
 
 		}
 	}
@@ -254,6 +255,13 @@ void ofApp::update() {
 
 }
 
+
+/*
+updateCamera()
+カメラ及び保存したカラー・深度動画情報から、手指の位置を算出する。
+算出した手指等の座標情報は、対応するdPに保存される。
+
+*/
 void ofApp::updateCamera() { //Liveに必要なもののみ。他に必要なものはほかでやろう
 							// This function blocks until a color sample is ready
 	if (senseManager->AcquireFrame(true) == PXC_STATUS_NO_ERROR) {
@@ -267,7 +275,6 @@ void ofApp::updateCamera() { //Liveに必要なもののみ。他に必要なも
 		if (sampleImage->AcquireAccess(PXCImage::ACCESS_READ, PXCImage::PIXEL_FORMAT_RGB32, &sampleData) >= PXC_STATUS_NO_ERROR) {
 			uint8_t* cBuffer = sampleData.planes[0];
 			imagePixels.setFromPixels(cBuffer, 640, 480, 4);
-			//printf("%s", sampleData.planes[0]);
 			sampleImage->ReleaseAccess(&sampleData);
 		}
 		//hand
@@ -349,26 +356,21 @@ void ofApp::updateCamera() { //Liveに必要なもののみ。他に必要なも
 					PXCFaceData::LandmarkPoint *points = new PXCFaceData::LandmarkPoint[npoints];
 					ldata->QueryPointsByGroup(
 						PXCFaceData::LandmarksGroupType::LANDMARK_GROUP_LEFT_EYE, points);
-					//leftEyeAt.set(points[6].image.x, points[6].image.y);
 					dP[lEye].pos.set(points[6].image.x, points[6].image.y);
 					dP[lEye].en = true;
 
 					ldata->QueryPointsByGroup(
 						PXCFaceData::LandmarksGroupType::LANDMARK_GROUP_RIGHT_EYE, points);
-					//rightEyeAt.set(points[6].image.x, points[6].image.y);
 					dP[rEye].pos.set(points[6].image.x, points[6].image.y);
 					dP[rEye].en = true;
 
 					ldata->QueryPointsByGroup(
 						PXCFaceData::LandmarksGroupType::LANDMARK_GROUP_MOUTH, points);
-					//mouseAt.set(points[3].image.x, points[3].image.y);
 					dP[mouse].pos.set(points[3].image.x, points[3].image.y);
 					dP[mouse].en = true;
 
-					//faceFound = true;
 				}
 				else {
-					//faceFound = false;
 					dP[lEye].en = false;
 					dP[rEye].en = false;
 					dP[mouse].en = false;
@@ -383,12 +385,10 @@ void ofApp::updateCamera() { //Liveに必要なもののみ。他に必要なも
 		senseManager->ReleaseFrame();
 	}
 	else {
-		printf("Aquireframe error\n");
+		//printf("Aquireframe error\n");
 		Pause = true;
-		//writeOut = false;
 		framePlayback--;
 		senseManager->QueryCaptureManager()->SetPause(Pause);
-		//ofSetFrameRate(15);
 	}
 	texture.loadData(imagePixels.getPixels(), 640, 480, GL_BGRA);
 }
@@ -465,8 +465,6 @@ void ofApp::draw() {
 			}
 		}
 		ImGui::End();
-
-		//drawPoints();
 		break;
 
 	case RECORD:
@@ -484,7 +482,6 @@ void ofApp::draw() {
 		if (ImGui::Button(u8"ストップ"))
 		{
 			Pause = true;
-			//senseManager->QueryCaptureManager()->SetPause(Pause);
 			VC_State = EDIT;
 			senseManager->QueryCaptureManager()->CloseStreams();
 			senseManager->Close();
@@ -499,16 +496,9 @@ void ofApp::draw() {
 		ImGui::End();
 		drawPicCtrl();
 
-		/*
-		if (isColorPointsEnable) {
-			drawPoints();
-		}
-		drawImages();
-		*/
 		break;
 
 	case EDIT:
-		//drawPoints();
 		if (Pause == false) frameNum++;
 
 		ImGui::SetNextWindowSize(ofVec2f(500, 200), ImGuiSetCond_Always);
@@ -538,8 +528,6 @@ void ofApp::draw() {
 		ImGui::SameLine();
 		if (ImGui::Button(u8"かきだす"))
 		{
-		//	ImGui::OpenPopup("WriteOut");
-
 			recdir = dir + "rec";
 			int len = recdir.length();
 			char* dname = new char[len + 1];
@@ -552,20 +540,7 @@ void ofApp::draw() {
 			Pause = false;
 			senseManager->QueryCaptureManager()->SetPause(Pause);
 		}
-		/*if (ImGui::BeginPopupModal("WriteOut", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			if (ImGui::Button(u8"とりやめる", ImVec2(120, 0))) {
-				writeOut = false;
-			}
-			if (!writeOut) {
-				ofSetFrameRate(15);
-				framePlayback = 0;
-				Pause = true;
-				senseManager->QueryCaptureManager()->SetPause(Pause);
-				ImGui::CloseCurrentPopup();
-			}
-			ImGui::EndPopup();
-		}*/
+
 		ImGui::SameLine();
 		if (ImGui::Button(u8"さいしょにもどる"))
 		{
@@ -587,48 +562,27 @@ void ofApp::draw() {
 		}
 
 		ImGui::NewLine();
-		if (ImGui::Button(u8"スタート"))
-		{
+		if (ImGui::Button(u8"スタート")){
 			Pause = false;
 			senseManager->QueryCaptureManager()->SetPause(Pause);
 		}
 		ImGui::SameLine();
-		if (ImGui::Button(u8"ストップ"))
-		{
+		if (ImGui::Button(u8"ストップ")){
 			Pause = true;
 			senseManager->QueryCaptureManager()->SetPause(Pause);
 		}
 		ImGui::SameLine();
-		if (ImGui::Button(u8"まきもどす"))
-		{
+		if (ImGui::Button(u8"まきもどす")){
 			framePlayback = 0;
 			Pause = true;
 			senseManager->QueryCaptureManager()->SetPause(Pause);
 		}
 
-
-
 		ImGui::Text(u8"<-もどる"); ImGui::SameLine();
-		if (ImGui::Button("-3s"))
-		{
-			framePlayback -= 90;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("-1s"))
-		{
-			framePlayback -= 30;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("+1s"))
-		{
-			framePlayback += 30;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("+3s"))
-		{
-			framePlayback += 90;
-		}
-		ImGui::SameLine();
+		if (ImGui::Button("-3s")) { framePlayback -= FPS*3; } ImGui::SameLine();
+		if (ImGui::Button("-1s")){framePlayback -= FPS*1;}	ImGui::SameLine();
+		if (ImGui::Button("+1s")){framePlayback += FPS*1;}	ImGui::SameLine();
+		if (ImGui::Button("+3s")){framePlayback += FPS*3;}	ImGui::SameLine();
 		ImGui::Text(u8"すすむ->");
 
 		ImGui::Text(u8"フレーム"); ImGui::SameLine();
@@ -749,13 +703,13 @@ void ofApp::drawPoints() {
 	for (int i = 0; i < dPsize; i++) {
 		if (dP[i].en) {
 			switch (i) {
-			case 0: case 1:
+			case 0: case 1:  //左手の範囲である
 				ofSetColor(255, 0, 0);
 				break;
-			case 2: case 3:
+			case 2: case 3:  //右手の範囲である　
 				ofSetColor(0, 0, 255);
 				break;
-			case 4: case 5: case 6:
+			case 4: case 5: case 6:  //顔の範囲である。
 				ofSetColor(0, 255, 0);
 				break;
 			}
