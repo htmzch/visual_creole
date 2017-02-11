@@ -91,11 +91,11 @@ class ofApp : public ofBaseApp{
 	#define bg			7
 
 		typedef struct _lenderunit {
-			bool en;
-			int to;
+			bool en;	//描画有効かどうか
+			int to;		//あてはめ先。上に#defineされている、lhandpalmなどと設定すればおｋ
 			ofFbo layer; //ドローイング内容を保存しておく。変更発生時のみ、このレイヤを画像化する。
-			ofImage image; //layerを画像化したもの、これを各ドローポイント（指先etc）に追従させ表示する。
-			ofImage fileimg; //外部から読み込んだ画像ファイル
+			ofImage image; //layer、fileimgを画像化したもの、これを各ドローポイント（指先etc）に追従させ表示する。
+			ofImage fileimg; //外部から読み込んだ画像ファイル、これをsizeに従って縮小拡大して、imageに格納します。
 			ofVec2f offset;
 			int size; //%基準。layerおよびfileimgの
 			int size_pre; //サイズ変更を検知するため、1フレ前の大きさも入れておきます
@@ -103,9 +103,9 @@ class ofApp : public ofBaseApp{
 			int in, out; //描画有効、無効となるフレーム
 		} lenderunit;
 
-#define lunitsize 4
+#define lunitsize 4 //ひとまず左右の手、顔、背景に使えるように4つ確保
 
-		lenderunit lunit[lunitsize]; //ひとまず左右の手、顔、背景に使えるように4つ確保
+		lenderunit lunit[lunitsize]; 
 
 		ofFbo mainlayer; //最終的にこのレイヤにすべてのlenderunit.imageをまとめて書き込む。
 
